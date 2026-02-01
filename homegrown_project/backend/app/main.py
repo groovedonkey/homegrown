@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from . import models, database
 
 # Init Environment
-load_dotenv()
+load_dotenv(override=True)
 
 # Configure the API Key
 api_key = os.getenv("GEMINI_API_KEY")
@@ -20,9 +20,11 @@ if api_key:
 app = FastAPI(title="Homegrown API")
 
 # --- CORS SETUP ---
+cors_allow_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
+allow_origins = ["*"] if cors_allow_origins.strip() == "*" else [o.strip() for o in cors_allow_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -93,17 +95,38 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     - Keep responses short (under 3 sentences) unless explaining a complex concept.
     - If the student completes the objective, add [MODULE_COMPLETE] to your response.
     """
+
+    def _dev_fallback_response() -> str:
+        msg_lower = request.message.strip().lower()
+        if any(token in msg_lower for token in ["done", "completed", "finish", "finished", "i did it", "module complete"]):
+            return f"Nice work — you met the objective for '{current_mod.get('title', 'this module')}'. [MODULE_COMPLETE]"
+
+        objective = current_mod.get("objective")
+        if objective:
+            return f"Let's focus on the objective: {objective} What would you like to try next?"
+        return "Tell me what you tried, and I'll guide your next step."
     
     # 4. Call Gemini
     try:
+        dev_fallback_enabled = os.getenv("HOMEGROWN_DEV_FALLBACK", "0") == "1"
+        if dev_fallback_enabled:
+            ai_text = _dev_fallback_response()
+            raise StopIteration
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY is not configured")
-        model = genai.GenerativeModel('gemini-1.5-pro') 
+        model_name = os.getenv("GEMINI_MODEL", "gemini-pro-latest")
+        model = genai.GenerativeModel(model_name)
         full_prompt = f"{system_instruction}\n\nUser: {request.message}"
         response = model.generate_content(full_prompt)
         ai_text = response.text
+    except StopIteration:
+        pass
     except Exception as e:
-        ai_text = f"I'm having trouble connecting to my brain right now. (Error: {str(e)})"
+        err_text = str(e)
+        if "429" in err_text or "quota" in err_text.lower() or "rate" in err_text.lower():
+            ai_text = _dev_fallback_response()
+        else:
+            ai_text = f"I'm having trouble connecting to my brain right now. (Error: {err_text})"
 
     # 5. Check for State Change
     workspace_update = None
