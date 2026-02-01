@@ -143,12 +143,7 @@ function UploadPanel({ enrollmentId, onUploaded }) {
 }
 
 export default function Workspace({ enrollment, onBack }) {
-  const [messages, setMessages] = useState([
-    {
-      sender: 'agent',
-      text: `Welcome! You’re in ${enrollment.course_title || 'your course'}. Say hello to begin.`,
-    },
-  ])
+  const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -161,6 +156,40 @@ export default function Workspace({ enrollment, onBack }) {
   }))
 
   const scrollRef = useRef(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadHistory() {
+      try {
+        const res = await api.get('/chat/history', {
+          params: { enrollment_id: enrollment.enrollment_id, limit: 100 },
+        })
+
+        if (cancelled) return
+
+        const items = res.data?.items || []
+        if (items.length > 0) {
+          setMessages(items.map((i) => ({ sender: i.sender, text: i.content })))
+          return
+        }
+      } catch {
+        if (cancelled) return
+      }
+
+      setMessages([
+        {
+          sender: 'agent',
+          text: `Welcome back! You’re in ${enrollment.course_title || 'your course'}.`,
+        },
+      ])
+    }
+
+    loadHistory()
+    return () => {
+      cancelled = true
+    }
+  }, [enrollment.enrollment_id, enrollment.course_title])
 
   useEffect(() => {
     const el = scrollRef.current

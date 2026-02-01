@@ -26,6 +26,8 @@ export default function Welcome({ onSelectEnrollment }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  const lastEnrollmentKey = 'homegrown:last_enrollment_id'
+
   const selected = useMemo(
     () => enrollments.find((e) => String(e.enrollment_id) === String(selectedId)) || null,
     [enrollments, selectedId],
@@ -40,9 +42,20 @@ export default function Welcome({ onSelectEnrollment }) {
       try {
         const res = await api.get('/enrollments')
         if (cancelled) return
-        setEnrollments(res.data || [])
-        if ((res.data || []).length > 0) {
-          setSelectedId(String((res.data || [])[0].enrollment_id))
+        const list = res.data || []
+        setEnrollments(list)
+
+        if (list.length > 0) {
+          let preferredId = String(list[0].enrollment_id)
+          try {
+            const stored = localStorage.getItem(lastEnrollmentKey)
+            if (stored && list.some((e) => String(e.enrollment_id) === String(stored))) {
+              preferredId = String(stored)
+            }
+          } catch {
+            // ignore
+          }
+          setSelectedId(preferredId)
         }
       } catch {
         if (cancelled) return
@@ -128,7 +141,15 @@ export default function Welcome({ onSelectEnrollment }) {
               </div>
 
               <button
-                onClick={() => selected && onSelectEnrollment(selected)}
+                onClick={() => {
+                  if (!selected) return
+                  try {
+                    localStorage.setItem(lastEnrollmentKey, String(selected.enrollment_id))
+                  } catch {
+                    // ignore
+                  }
+                  onSelectEnrollment(selected)
+                }}
                 disabled={!selected || isLoading}
                 className="mt-4 w-full rounded-xl bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors px-4 py-3 text-sm font-semibold text-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >

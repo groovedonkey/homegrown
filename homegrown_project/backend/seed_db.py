@@ -32,7 +32,7 @@ daisy = models.Agent(
 
 daisy_course = models.Course(
     id="finance_101", 
-    title="Money 101", 
+    title="Personal Finance 101", 
     agent_id="daisy_dollars",
     curriculum_json={
         "modules": [{
