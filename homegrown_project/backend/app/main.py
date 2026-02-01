@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 from . import models, database
 from .routers.chat import router as chat_router
+from .routers.enrollments import router as enrollments_router
+from .routers.uploads import router as uploads_router
 
 # Init Environment
 load_dotenv(override=True)
@@ -23,6 +25,8 @@ app.add_middleware(
 )
 
 app.include_router(chat_router, prefix="/api")
+app.include_router(enrollments_router, prefix="/api")
+app.include_router(uploads_router, prefix="/api")
 
 # --- Initialization ---
 @app.on_event("startup")

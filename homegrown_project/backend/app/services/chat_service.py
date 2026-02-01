@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from .. import models
+from ..instructors import get_persona_for_agent
 from .llm_service import generate_ai_text
 
 
@@ -38,7 +39,12 @@ def _get_enrollment_context(db: Session, enrollment_id: int):
 def handle_chat(db: Session, enrollment_id: int, user_message: str):
     enrollment, course, agent, modules, current_mod = _get_enrollment_context(db, enrollment_id)
 
+    persona = get_persona_for_agent(agent.id)
+    persona_instructions = persona.system_instructions if persona else ""
+
     system_instruction = f"""
+    {persona_instructions}
+
     You are {agent.name}. 
     Your Core Personality: {agent.system_prompt_core}
 
