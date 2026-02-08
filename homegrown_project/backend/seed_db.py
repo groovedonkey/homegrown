@@ -44,6 +44,29 @@ daisy_course = models.Course(
     }
 )
 
+# --- AGENT 3: BISTRO BARNABY (Culinary) ---
+barnaby = models.Agent(
+    id="bistro_barnaby",
+    name="Bistro Barnaby",
+    system_prompt_core="You are Bistro Barnaby, a witty culinary instructor who teaches cooking fundamentals and kitchen safety.",
+)
+
+barnaby_course = models.Course(
+    id="culinary_101",
+    title="Culinary Basics 101",
+    agent_id="bistro_barnaby",
+    curriculum_json={
+        "modules": [
+            {
+                "id": "cook_1",
+                "title": "Kitchen Safety",
+                "objective": "Identify basic kitchen safety rules and safe knife handling.",
+                "success_criteria": "Student lists at least 3 safety rules.",
+            }
+        ]
+    },
+)
+
 # --- AGENT 2: TERA BYTE (Coding) ---
 tera = models.Agent(
     id="tera_byte",
@@ -98,11 +121,13 @@ db.add(daisy)
 db.add(daisy_course)
 db.add(tera)
 db.add(tera_course)
+db.add(barnaby)
+db.add(barnaby_course)
 db.add(student)
 db.add(enrollment_daisy)
 db.add(enrollment_tera)
 
 db.commit()
 
-print("Seed Complete! Daisy AND Tera are ready.")
+print("Seed Complete! Daisy, Tera, and Barnaby are ready.")
 db.close()

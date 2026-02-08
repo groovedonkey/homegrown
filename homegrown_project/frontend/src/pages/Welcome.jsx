@@ -21,16 +21,24 @@ function EnrollmentOption({ enrollment }) {
 }
 
 export default function Welcome({ onSelectEnrollment }) {
-  const [enrollments, setEnrollments] = useState([])
-  const [selectedId, setSelectedId] = useState('')
+  const [instructors, setInstructors] = useState([])
+  const [courses, setCourses] = useState([])
+  const [selectedInstructorId, setSelectedInstructorId] = useState('')
+  const [selectedCourseId, setSelectedCourseId] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const lastEnrollmentKey = 'homegrown:last_enrollment_id'
+  const lastInstructorKey = 'homegrown:last_instructor_id'
+  const lastCourseKey = 'homegrown:last_course_id'
 
-  const selected = useMemo(
-    () => enrollments.find((e) => String(e.enrollment_id) === String(selectedId)) || null,
-    [enrollments, selectedId],
+  const selectedInstructor = useMemo(
+    () => instructors.find((i) => String(i.agent_id) === String(selectedInstructorId)) || null,
+    [instructors, selectedInstructorId],
+  )
+
+  const selectedCourse = useMemo(
+    () => courses.find((c) => String(c.course_id) === String(selectedCourseId)) || null,
+    [courses, selectedCourseId],
   )
 
   useEffect(() => {
@@ -40,26 +48,26 @@ export default function Welcome({ onSelectEnrollment }) {
       setIsLoading(true)
       setError(null)
       try {
-        const res = await api.get('/enrollments')
+        const res = await api.get('/instructors')
         if (cancelled) return
         const list = res.data || []
-        setEnrollments(list)
+        setInstructors(list)
 
         if (list.length > 0) {
-          let preferredId = String(list[0].enrollment_id)
+          let preferredId = String(list[0].agent_id)
           try {
-            const stored = localStorage.getItem(lastEnrollmentKey)
-            if (stored && list.some((e) => String(e.enrollment_id) === String(stored))) {
+            const stored = localStorage.getItem(lastInstructorKey)
+            if (stored && list.some((i) => String(i.agent_id) === String(stored))) {
               preferredId = String(stored)
             }
           } catch {
             // ignore
           }
-          setSelectedId(preferredId)
+          setSelectedInstructorId(preferredId)
         }
       } catch {
         if (cancelled) return
-        setError('Could not load enrollments. Is the backend running?')
+        setError('Could not load instructors. Is the backend running?')
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -70,6 +78,52 @@ export default function Welcome({ onSelectEnrollment }) {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCourses() {
+      if (!selectedInstructorId) {
+        setCourses([])
+        setSelectedCourseId('')
+        return
+      }
+
+      setIsLoading(true)
+      setError(null)
+      try {
+        const res = await api.get(`/instructors/${selectedInstructorId}/courses`)
+        if (cancelled) return
+        const list = res.data || []
+        setCourses(list)
+
+        if (list.length > 0) {
+          let preferredCourse = String(list[0].course_id)
+          try {
+            const stored = localStorage.getItem(lastCourseKey)
+            if (stored && list.some((c) => String(c.course_id) === String(stored))) {
+              preferredCourse = String(stored)
+            }
+          } catch {
+            // ignore
+          }
+          setSelectedCourseId(preferredCourse)
+        } else {
+          setSelectedCourseId('')
+        }
+      } catch {
+        if (cancelled) return
+        setError('Could not load courses for that instructor.')
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    loadCourses()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedInstructorId])
 
   return (
     <div className="min-h-screen bg-linear-to-br from-zinc-950 via-zinc-950 to-emerald-950 text-zinc-100">
@@ -118,42 +172,92 @@ export default function Welcome({ onSelectEnrollment }) {
                 </div>
               )}
 
-              <label className="block text-xs text-emerald-200/70">Enrollment</label>
+              <label className="block text-xs text-emerald-200/70">Instructor</label>
               <select
-                value={selectedId}
-                onChange={(e) => setSelectedId(e.target.value)}
+                value={selectedInstructorId}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setSelectedInstructorId(next)
+                  setSelectedCourseId('')
+                  try {
+                    localStorage.setItem(lastInstructorKey, String(next))
+                  } catch {
+                    // ignore
+                  }
+                }}
                 className="mt-2 w-full rounded-xl bg-zinc-950/40 border border-white/10 px-3 py-2 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500/40"
                 disabled={isLoading}
               >
-                {enrollments.map((e) => (
-                  <option key={e.enrollment_id} value={String(e.enrollment_id)}>
-                    {(e.course_title || 'Untitled Course') + (e.agent_name ? ` — ${e.agent_name}` : '')}
+                {instructors.map((i) => (
+                  <option key={i.agent_id} value={String(i.agent_id)}>
+                    {i.agent_name || 'Unnamed Instructor'}
+                  </option>
+                ))}
+              </select>
+
+              <label className="block text-xs text-emerald-200/70 mt-4">Course</label>
+              <select
+                value={selectedCourseId}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setSelectedCourseId(next)
+                  try {
+                    localStorage.setItem(lastCourseKey, String(next))
+                  } catch {
+                    // ignore
+                  }
+                }}
+                className="mt-2 w-full rounded-xl bg-zinc-950/40 border border-white/10 px-3 py-2 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500/40"
+                disabled={isLoading || !selectedInstructorId}
+              >
+                {courses.map((c) => (
+                  <option key={c.course_id} value={String(c.course_id)}>
+                    {c.course_title || 'Untitled Course'}
                   </option>
                 ))}
               </select>
 
               <div className="mt-4 rounded-xl border border-white/10 bg-zinc-950/30 p-4">
-                {selected ? (
-                  <EnrollmentOption enrollment={selected} />
+                {selectedInstructor && selectedCourse ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-emerald-100 truncate">
+                        {selectedCourse.course_title || 'Untitled Course'}
+                      </div>
+                      <div className="text-xs text-emerald-200/70 truncate">
+                        {selectedInstructor.agent_name || 'Unnamed Instructor'}
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-emerald-300/80" />
+                  </div>
                 ) : (
                   <div className="text-xs text-zinc-400">No enrollment selected.</div>
                 )}
               </div>
 
               <button
-                onClick={() => {
-                  if (!selected) return
+                onClick={async () => {
+                  if (!selectedInstructorId || !selectedCourseId) return
+                  setIsLoading(true)
+                  setError(null)
                   try {
-                    localStorage.setItem(lastEnrollmentKey, String(selected.enrollment_id))
+                    const res = await api.post('/classroom/enter', null, {
+                      params: {
+                        agent_id: selectedInstructorId,
+                        course_id: selectedCourseId,
+                      },
+                    })
+                    onSelectEnrollment(res.data)
                   } catch {
-                    // ignore
+                    setError('Could not enter classroom.')
+                  } finally {
+                    setIsLoading(false)
                   }
-                  onSelectEnrollment(selected)
                 }}
-                disabled={!selected || isLoading}
+                disabled={!selectedInstructorId || !selectedCourseId || isLoading}
                 className="mt-4 w-full rounded-xl bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors px-4 py-3 text-sm font-semibold text-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Enter Workspace
+                Enter Classroom
               </button>
 
               <div className="mt-3 text-[11px] text-emerald-200/60">

@@ -1,0 +1,4 @@
+[build]
+  base = "homegrown_project/frontend"
+  publish = "dist"
+  command = "npm run build"

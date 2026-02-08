@@ -1,5 +1,6 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, JSON, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.mutable import MutableDict
 from .database import Base
 from datetime import datetime
 
@@ -35,7 +36,7 @@ class Enrollment(Base):
     student_id = Column(Integer, ForeignKey("users.id"))
     course_id = Column(String, ForeignKey("courses.id"))
     current_module_index = Column(Integer, default=0)
-    student_facts = Column(JSON, default=dict)
+    student_facts = Column(MutableDict.as_mutable(JSON), default=dict)
     
     # --- THIS WAS THE MISSING LINK ---
     student = relationship("User", back_populates="enrollments")

@@ -1,16 +1,40 @@
 import os
+import json
 import google.generativeai as genai
 
 
 def _dev_fallback_response(user_message: str, current_mod: dict) -> str:
     msg_lower = user_message.strip().lower()
     if any(token in msg_lower for token in ["done", "completed", "finish", "finished", "i did it", "module complete"]):
-        return f"Nice work — you met the objective for '{current_mod.get('title', 'this module')}'. [MODULE_COMPLETE]"
+        payload = {
+            "version": 1,
+            "mode": "chat",
+            "blocks": [
+                {
+                    "type": "markdown",
+                    "text": f"Nice work — you met the objective for '{current_mod.get('title', 'this module')}'. [MODULE_COMPLETE]",
+                }
+            ],
+        }
+        return json.dumps(payload)
 
     objective = current_mod.get("objective")
     if objective:
-        return f"Let's focus on the objective: {objective} What would you like to try next?"
-    return "Tell me what you tried, and I'll guide your next step."
+        payload = {
+            "version": 1,
+            "mode": "chat",
+            "blocks": [
+                {"type": "markdown", "text": f"Let's focus on the objective: {objective} What would you like to try next?"}
+            ],
+        }
+        return json.dumps(payload)
+
+    payload = {
+        "version": 1,
+        "mode": "chat",
+        "blocks": [{"type": "markdown", "text": "Tell me what you tried, and I'll guide your next step."}],
+    }
+    return json.dumps(payload)
 
 
 def generate_ai_text(system_instruction: str, user_message: str, current_mod: dict) -> str:

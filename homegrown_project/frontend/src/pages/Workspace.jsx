@@ -17,6 +17,111 @@ function cx(...args) {
   return args.filter(Boolean).join(' ')
 }
 
+function McqQuizBlock({ enrollmentId, block, onSend }) {
+  const [answers, setAnswers] = useState({})
+  const [result, setResult] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const submit = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const res = await api.post('/quiz/submit', {
+        enrollment_id: enrollmentId,
+        quiz_id: block.quiz_id,
+        answers: (block.questions || []).map((q) => ({
+          question_id: q.id,
+          answer_id: answers[q.id] || '',
+        })),
+      })
+      setResult(res.data)
+    } catch {
+      setResult({ error: 'Could not submit quiz. Is the backend running?' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const scoreLine = () => {
+    if (!result || result.error) return null
+    const passText =
+      typeof result.passed === 'boolean'
+        ? result.passed
+          ? 'Pass'
+          : 'Try again'
+        : ''
+    return `${result.score}/${result.total}${passText ? ` • ${passText}` : ''}`
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="text-sm font-semibold text-emerald-100">{block.title || 'Quiz'}</div>
+
+      {(block.questions || []).map((q, idx) => (
+        <div key={q.id || idx} className="rounded-xl border border-white/10 bg-zinc-950/30 p-3">
+          <div className="text-sm text-zinc-100">
+            <span className="text-emerald-200/70 mr-2">Q{idx + 1}.</span>
+            {q.prompt}
+          </div>
+          <div className="mt-2 space-y-2">
+            {(q.options || []).map((opt) => (
+              <label
+                key={opt.id}
+                className="flex items-center gap-2 text-xs text-zinc-200 cursor-pointer"
+              >
+                <input
+                  type="radio"
+                  name={q.id}
+                  value={opt.id}
+                  checked={String(answers[q.id] || '') === String(opt.id)}
+                  onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: opt.id }))}
+                />
+                <span>{opt.text}</span>
+              </label>
+            ))}
+          </div>
+
+          {result && !result.error && Array.isArray(result.results) && (
+            <div className="mt-2 text-[11px] text-emerald-200/70">
+              {(() => {
+                const r = result.results.find((x) => x.question_id === q.id)
+                if (!r) return null
+                if (r.is_correct) return 'Correct'
+                if (!r.given_answer_id) return 'Not answered'
+                return 'Incorrect'
+              })()}
+            </div>
+          )}
+        </div>
+      ))}
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={submit}
+          disabled={isSubmitting}
+          className="rounded-xl bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors px-4 py-2 text-xs font-semibold text-emerald-100 disabled:opacity-50"
+        >
+          {isSubmitting ? 'Submitting…' : 'Submit'}
+        </button>
+        {result && !result.error && (
+          <button
+            onClick={() => onSend?.('continue')}
+            className="rounded-xl border border-white/10 bg-zinc-950/40 px-4 py-2 text-xs text-zinc-200 hover:bg-zinc-950/60"
+            title="Ask Daisy to continue the lesson"
+          >
+            Continue
+          </button>
+        )}
+        {result?.error ? (
+          <div className="text-xs text-red-200">{result.error}</div>
+        ) : (
+          <div className="text-xs text-emerald-200/70">{scoreLine()}</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function NotesPanel({ enrollmentId }) {
   const storageKey = `homegrown:notes:${enrollmentId}`
   const [notes, setNotes] = useState(() => {
@@ -170,7 +275,20 @@ export default function Workspace({ enrollment, onBack }) {
 
         const items = res.data?.items || []
         if (items.length > 0) {
-          setMessages(items.map((i) => ({ sender: i.sender, text: i.content })))
+          const mapped = items.map((i) => {
+            if (i.sender === 'agent') {
+              try {
+                const parsed = JSON.parse(i.content)
+                if (parsed && Array.isArray(parsed.blocks)) {
+                  return { sender: 'agent', blocks: parsed.blocks }
+                }
+              } catch {
+                // ignore
+              }
+            }
+            return { sender: i.sender, blocks: [{ type: 'markdown', text: i.content }] }
+          })
+          setMessages(mapped)
           return
         }
       } catch {
@@ -180,7 +298,7 @@ export default function Workspace({ enrollment, onBack }) {
       setMessages([
         {
           sender: 'agent',
-          text: `Welcome back! You’re in ${enrollment.course_title || 'your course'}.`,
+          blocks: [{ type: 'markdown', text: `Welcome back! You’re in ${enrollment.course_title || 'your course'}.` }],
         },
       ])
     }
@@ -204,12 +322,41 @@ export default function Workspace({ enrollment, onBack }) {
     return parts.join(' • ') || 'Homegrown'
   }, [enrollment])
 
-  const sendMessage = async () => {
-    const msg = input.trim()
+  const resetSession = async () => {
+    if (isLoading) return
+    setIsLoading(true)
+    try {
+      await api.post('/chat/reset', null, {
+        params: { enrollment_id: enrollment.enrollment_id },
+      })
+      setInput('')
+      setMessages([
+        {
+          sender: 'system',
+          blocks: [{ type: 'markdown', text: 'Session reset. Say hello when you’re ready to start fresh.' }],
+        },
+      ])
+
+      setWorkspace((prev) => ({
+        ...prev,
+        status: 'In Progress',
+        moduleIndex: 0,
+      }))
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { sender: 'system', blocks: [{ type: 'markdown', text: 'Could not reset. Is the backend running?' }] },
+      ])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const sendChat = async (rawMsg) => {
+    const msg = (rawMsg || '').trim()
     if (!msg || isLoading) return
 
-    setMessages((prev) => [...prev, { sender: 'student', text: msg }])
-    setInput('')
+    setMessages((prev) => [...prev, { sender: 'student', blocks: [{ type: 'markdown', text: msg }] }])
     setIsLoading(true)
 
     try {
@@ -218,8 +365,8 @@ export default function Workspace({ enrollment, onBack }) {
         message: msg,
       })
 
-      const agentText = res.data?.agent_response || ''
-      setMessages((prev) => [...prev, { sender: 'agent', text: agentText }])
+      const blocks = res.data?.blocks || [{ type: 'markdown', text: '' }]
+      setMessages((prev) => [...prev, { sender: 'agent', blocks }])
 
       if (res.data?.workspace_update) {
         setWorkspace((prev) => ({
@@ -233,11 +380,18 @@ export default function Workspace({ enrollment, onBack }) {
     } catch {
       setMessages((prev) => [
         ...prev,
-        { sender: 'system', text: 'Connection error. Is the backend running?' },
+        { sender: 'system', blocks: [{ type: 'markdown', text: 'Connection error. Is the backend running?' }] },
       ])
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const sendMessage = async () => {
+    const msg = input.trim()
+    if (!msg || isLoading) return
+    setInput('')
+    await sendChat(msg)
   }
 
   return (
@@ -261,6 +415,14 @@ export default function Workspace({ enrollment, onBack }) {
                 Enrollment #{enrollment.enrollment_id}
               </div>
             </div>
+            <button
+              onClick={resetSession}
+              disabled={isLoading}
+              className="ml-auto rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-950/60 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Start over with a clean chat history"
+            >
+              Start Fresh
+            </button>
           </div>
 
           <div ref={scrollRef} className="h-[calc(100vh-160px)] overflow-y-auto px-4 py-5 space-y-4">
@@ -279,7 +441,20 @@ export default function Workspace({ enrollment, onBack }) {
                         : 'bg-white/5 border-white/10 text-zinc-100 rounded-bl-none',
                   )}
                 >
-                  <ReactMarkdown>{m.text}</ReactMarkdown>
+                  {(m.blocks || []).map((b, bi) => {
+                    if (b.type === 'mcq_quiz') {
+                      return (
+                        <div key={bi} className="mt-2">
+                          <McqQuizBlock enrollmentId={enrollment.enrollment_id} block={b} onSend={sendChat} />
+                        </div>
+                      )
+                    }
+                    return (
+                      <div key={bi} className={bi === 0 ? '' : 'mt-2'}>
+                        <ReactMarkdown>{b.text || ''}</ReactMarkdown>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             ))}
