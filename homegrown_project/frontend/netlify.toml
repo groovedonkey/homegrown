@@ -2,9 +2,3 @@
   base = "homegrown_project/frontend"
   publish = "dist"
   command = "npm run build"
-
-[[redirects]]
-  from = "/api/*"
-  to = "${VITE_API_BASE_URL}/:splat"
-  status = 200
-  force = true
