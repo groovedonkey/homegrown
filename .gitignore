@@ -30,3 +30,6 @@ homegrown_project/backend/app/homegrown.db
 homegrown_project/frontend/node_modules/
 homegrown_project/frontend/dist/
 homegrown_project/frontend/dist-ssr/
+
+# Local Netlify folder
+.netlify

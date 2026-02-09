@@ -2,3 +2,9 @@
   base = "homegrown_project/frontend"
   publish = "dist"
   command = "npm run build"
+
+# SPA routing: send all paths to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
