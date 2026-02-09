@@ -9,6 +9,11 @@ from .llm_service import generate_ai_text
 
 _GREETING_TOKENS = {"hi", "hello", "hey", "yo", "sup", "hiya"}
 
+_READY_TOKENS = {
+    "yes", "y", "yeah", "yep", "sure", "ok", "okay",
+    "ready", "im ready", "i'm ready", "lets go", "let's go", "start",
+}
+
 
 def _normalize_token(text: str) -> str:
     if not isinstance(text, str):
@@ -24,21 +29,7 @@ def _looks_like_goal(text: str) -> bool:
     if len(s) < 3:
         return False
     # Avoid treating readiness confirmations as goals.
-    if s in {
-        "yes",
-        "y",
-        "yeah",
-        "yep",
-        "sure",
-        "ok",
-        "okay",
-        "ready",
-        "im ready",
-        "i'm ready",
-        "lets go",
-        "let's go",
-        "start",
-    }:
+    if s in _READY_TOKENS:
         return False
     if s in _GREETING_TOKENS:
         return False
@@ -79,21 +70,7 @@ def _maybe_capture_student_name(enrollment: models.Enrollment, user_message: str
         return
 
     # Don't treat readiness confirmations as a goal.
-    if msg_norm in {
-        "yes",
-        "y",
-        "yeah",
-        "yep",
-        "sure",
-        "ok",
-        "okay",
-        "ready",
-        "im ready",
-        "i'm ready",
-        "lets go",
-        "let's go",
-        "start",
-    }:
+    if msg_norm in _READY_TOKENS:
         return
 
     # Heuristic: treat short, mostly-alphabetic replies as a name (e.g., "Lydia", "Lydia G").
@@ -132,22 +109,7 @@ def _maybe_advance_ready(enrollment: models.Enrollment, user_message: str) -> No
     if not msg:
         return
 
-    ready_tokens = {
-        "yes",
-        "y",
-        "yeah",
-        "yep",
-        "sure",
-        "ok",
-        "okay",
-        "ready",
-        "im ready",
-        "i'm ready",
-        "lets go",
-        "let's go",
-        "start",
-    }
-    if msg in ready_tokens or any(tok in msg for tok in ["i'm ready", "im ready", "let's", "lets"]):
+    if msg in _READY_TOKENS or any(tok in msg for tok in ["i'm ready", "im ready", "let's", "lets"]):
         facts["phase"] = "awaiting_goal"
         enrollment.student_facts = facts
 

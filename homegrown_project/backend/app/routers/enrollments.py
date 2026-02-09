@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from urllib.parse import quote
 from sqlalchemy.orm import Session
 
 from ..deps import get_db
@@ -10,7 +11,6 @@ from ..services.teacherbots_service import (
     list_instructors as tb_list_instructors,
     make_db_agent_and_course_fields,
 )
-from ..services.llm_service import generate_ai_text
 
 
 router = APIRouter()
@@ -54,7 +54,11 @@ def list_enrollments(db: Session = Depends(get_db)):
 @router.get("/instructors")
 def list_instructors(db: Session = Depends(get_db)):
     instructors = tb_list_instructors()
-    return [{"agent_id": i.instructor_id, "agent_name": i.instructor_name} for i in instructors]
+    results = []
+    for i in instructors:
+        avatar_url = f"/api/avatars/{quote(i.instructor_name)}.png"
+        results.append({"agent_id": i.instructor_id, "agent_name": i.instructor_name, "avatar_url": avatar_url})
+    return results
 
 
 @router.get("/instructors/{agent_id}/courses")
@@ -77,29 +81,16 @@ def instructor_intro(agent_id: str):
     if not inst:
         raise HTTPException(status_code=404, detail="Instructor not found")
 
-    system_instruction = (
-        "You are generating a short introduction message for a student who just selected an instructor. "
-        "Write in the instructor's voice based on the ROLE/PERSONA below. "
-        "Keep it to 3-6 sentences. End with one friendly question.\n\n"
-        "PERSONA:\n"
-        f"{inst.main_persona_text.strip()}\n"
-    )
-    try:
-        text = generate_ai_text(system_instruction, "Introduce yourself to the student.", current_mod={})
-        return {"intro": text}
-    except Exception:
-        # Fallback: derive a short intro from the persona text.
-        raw = (inst.main_persona_text or "").strip()
-        lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
-        role_line = ""
-        for ln in lines[:10]:
-            if ln.lower().startswith("role") or "role:" in ln.lower():
-                role_line = ln
-                break
-        name = inst.instructor_name
-        base = f"Hi! I’m {name}."
-        extra = f" {role_line}" if role_line and role_line.lower() != "role" else ""
-        return {"intro": f"{base}{extra} Ready to get started?"}
+    # Try to load a custom intro from the Teacher Intros folder.
+    from ..services.teacherbots_service import _find_teacherbots_root
+    root = _find_teacherbots_root()
+    if root:
+        intro_file = root / "Teacher Intros" / f"{inst.instructor_name}.txt"
+        if intro_file.exists() and intro_file.is_file():
+            return {"intro": intro_file.read_text(encoding="utf-8", errors="ignore").strip()}
+
+    # Fallback placeholder for instructors without a custom intro yet.
+    return {"intro": f"Hi! I'm {inst.instructor_name}. My introduction is coming soon — stay tuned!"}
 
 
 @router.post("/classroom/enter")

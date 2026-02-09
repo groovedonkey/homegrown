@@ -333,7 +333,7 @@ export default function Workspace({ enrollment, onBack }) {
       setMessages([
         {
           sender: 'system',
-          blocks: [{ type: 'markdown', text: 'Session reset. Say hello when you’re ready to start fresh.' }],
+          blocks: [{ type: 'markdown', text: `Session reset. Say hello when you're ready to start fresh.` }],
         },
       ])
 

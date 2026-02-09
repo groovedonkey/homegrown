@@ -1,6 +1,7 @@
 import os
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -26,6 +27,7 @@ def _slugify(value: str) -> str:
     return s or "course"
 
 
+@lru_cache(maxsize=1)
 def _find_teacherbots_root() -> Optional[Path]:
     env = os.getenv("HOMEGROWN_TEACHERBOTS_PATH")
     if env:
@@ -70,6 +72,7 @@ def _find_main_persona_file(root: Path, instructor_folder_name: str) -> Optional
     return None
 
 
+@lru_cache(maxsize=1)
 def list_instructors() -> List[TeacherBotInstructor]:
     root = _find_teacherbots_root()
     if not root:

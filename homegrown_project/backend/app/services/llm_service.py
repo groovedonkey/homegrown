@@ -2,6 +2,8 @@ import os
 import json
 import google.generativeai as genai
 
+_model_cache: dict = {}
+
 
 def _dev_fallback_response(user_message: str, current_mod: dict) -> str:
     msg_lower = user_message.strip().lower()
@@ -46,10 +48,14 @@ def generate_ai_text(system_instruction: str, user_message: str, current_mod: di
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not configured")
 
-    genai.configure(api_key=api_key)
-
     model_name = os.getenv("GEMINI_MODEL", "gemini-pro-latest")
-    model = genai.GenerativeModel(model_name)
+    cache_key = (api_key, model_name)
+
+    if cache_key not in _model_cache:
+        genai.configure(api_key=api_key)
+        _model_cache[cache_key] = genai.GenerativeModel(model_name)
+
+    model = _model_cache[cache_key]
 
     full_prompt = f"{system_instruction}\n\nUser: {user_message}"
 

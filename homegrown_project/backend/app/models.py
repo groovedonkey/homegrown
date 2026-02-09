@@ -1,8 +1,8 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, JSON, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, Text, JSON, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 from .database import Base
-from datetime import datetime
+from datetime import datetime, timezone
 
 class User(Base):
     __tablename__ = "users"
@@ -49,6 +49,6 @@ class ChatLog(Base):
     enrollment_id = Column(Integer, ForeignKey("enrollments.id"))
     sender = Column(String)
     content = Column(Text)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     enrollment = relationship("Enrollment", back_populates="chat_logs")

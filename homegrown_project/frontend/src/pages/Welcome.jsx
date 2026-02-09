@@ -1,24 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BookOpen, ChevronRight, Loader2 } from 'lucide-react'
-import { api } from '../lib/api'
-
-function EnrollmentOption({ enrollment }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="min-w-0">
-        <div className="text-sm font-semibold text-emerald-100 truncate">
-          {enrollment.course_title || 'Untitled Course'}
-        </div>
-        <div className="text-xs text-emerald-200/70 truncate">
-          {enrollment.agent_name ? `${enrollment.agent_name} • ` : ''}
-          {typeof enrollment.current_module_index === 'number' ? `Module ${enrollment.current_module_index + 1}` : 'Module ?'}
-          {typeof enrollment.total_modules === 'number' ? ` / ${enrollment.total_modules}` : ''}
-        </div>
-      </div>
-      <ChevronRight size={18} className="text-emerald-300/80" />
-    </div>
-  )
-}
+import { api, API_ORIGIN } from '../lib/api'
 
 export default function Welcome({ onSelectEnrollment }) {
   const [instructors, setInstructors] = useState([])
@@ -229,9 +211,21 @@ export default function Welcome({ onSelectEnrollment }) {
 
               {(isIntroLoading || intro) && (
                 <div className="mt-4 rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-4">
-                  <div className="text-xs font-semibold text-emerald-200">Introduction</div>
-                  <div className="mt-2 text-xs text-emerald-100/80 whitespace-pre-wrap">
-                    {isIntroLoading ? 'Generating introduction…' : intro}
+                  <div className="flex items-start gap-4">
+                    {selectedInstructor?.avatar_url && (
+                      <img
+                        src={`${API_ORIGIN}${selectedInstructor.avatar_url}`}
+                        alt={selectedInstructor.agent_name || 'Instructor avatar'}
+                        className="h-48 w-48 rounded-xl border border-emerald-500/20 bg-zinc-950/30 object-cover shrink-0"
+                        loading="lazy"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-emerald-200">Introduction</div>
+                      <div className="mt-2 text-xs text-emerald-100/80 whitespace-pre-wrap">
+                        {isIntroLoading ? 'Generating introduction…' : intro}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

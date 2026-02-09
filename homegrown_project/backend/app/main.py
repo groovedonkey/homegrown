@@ -1,6 +1,11 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import os
+from pathlib import Path
+from typing import Optional
 from dotenv import load_dotenv
 
 from . import models, database
@@ -12,32 +17,18 @@ from .routers.uploads import router as uploads_router
 # Init Environment
 load_dotenv(override=True)
 
-app = FastAPI(title="Homegrown API")
 
-# --- CORS SETUP ---
-cors_allow_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
-allow_origins = ["*"] if cors_allow_origins.strip() == "*" else [o.strip() for o in cors_allow_origins.split(",") if o.strip()]
-allow_credentials = False if allow_origins == ["*"] else True
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allow_origins,
-    allow_credentials=allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def _find_teacherbot_avatars_dir() -> Optional[Path]:
+    here = Path(__file__).resolve()
+    for parent in [here] + list(here.parents):
+        candidate = parent / "TeacherBots" / "Teacherbot Avatars"
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+    return None
 
-app.include_router(chat_router, prefix="/api")
-app.include_router(enrollments_router, prefix="/api")
-app.include_router(uploads_router, prefix="/api")
-
-
-@app.get("/api/health")
-def healthcheck():
-    return {"ok": True}
 
 # --- Initialization ---
-@app.on_event("startup")
-def startup():
+def _run_startup_seed():
     models.Base.metadata.create_all(bind=database.engine)
 
     # Idempotent local seed: ensure default instructors/courses exist.
@@ -83,6 +74,16 @@ def startup():
             "tera_byte",
             "Tera Byte",
             "You are Tera Byte, an energetic and precise coding tutor.",
+        )
+        lexi = upsert_agent(
+            "lexi_lingo",
+            "Lexi Lingo",
+            "You are Lexi Lingo, a sharp and encouraging language arts teacher who makes grammar and writing feel approachable.",
+        )
+        coach = upsert_agent(
+            "coach_kinetic",
+            "Coach Kinetic",
+            "You are Coach Kinetic, a tough but motivating sports and physical education coach who pushes students to be their best.",
         )
 
         daisy_course = upsert_course(
@@ -136,6 +137,48 @@ def startup():
                 ]
             },
         )
+        coach_course = upsert_course(
+            "sports_101",
+            "Sports Fundamentals",
+            coach.id,
+            {
+                "modules": [
+                    {
+                        "id": "sport_1",
+                        "title": "Warm-Up & Safety",
+                        "objective": "Understand the importance of warming up and learn proper stretching techniques.",
+                        "success_criteria": "Student describes a complete warm-up routine and explains why it prevents injury.",
+                    },
+                    {
+                        "id": "sport_2",
+                        "title": "Teamwork & Strategy",
+                        "objective": "Learn the basics of team coordination, positioning, and game strategy.",
+                        "success_criteria": "Student explains key roles on a team and diagrams a basic play.",
+                    },
+                ]
+            },
+        )
+        lexi_course = upsert_course(
+            "grammar_101",
+            "Grammar Fundamentals",
+            lexi.id,
+            {
+                "modules": [
+                    {
+                        "id": "gram_1",
+                        "title": "Parts of Speech",
+                        "objective": "Identify and classify nouns, verbs, adjectives, and adverbs in sentences.",
+                        "success_criteria": "Student correctly labels parts of speech in sample sentences.",
+                    },
+                    {
+                        "id": "gram_2",
+                        "title": "Sentence Structure",
+                        "objective": "Construct simple, compound, and complex sentences.",
+                        "success_criteria": "Student writes examples of each sentence type.",
+                    },
+                ]
+            },
+        )
 
         student = db.query(models.User).filter(models.User.role == "student").order_by(models.User.id.asc()).first()
         if not student:
@@ -155,7 +198,43 @@ def startup():
         ensure_enrollment(daisy_course)
         ensure_enrollment(barnaby_course)
         ensure_enrollment(tera_course)
+        ensure_enrollment(lexi_course)
+        ensure_enrollment(coach_course)
 
         db.commit()
     finally:
         db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _run_startup_seed()
+    yield
+
+
+app = FastAPI(title="Homegrown API", lifespan=lifespan)
+
+# --- CORS SETUP ---
+cors_allow_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
+allow_origins = ["*"] if cors_allow_origins.strip() == "*" else [o.strip() for o in cors_allow_origins.split(",") if o.strip()]
+allow_credentials = False if allow_origins == ["*"] else True
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=allow_credentials,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(chat_router, prefix="/api")
+app.include_router(enrollments_router, prefix="/api")
+app.include_router(uploads_router, prefix="/api")
+
+_avatars_dir = _find_teacherbot_avatars_dir()
+if _avatars_dir:
+    app.mount("/api/avatars", StaticFiles(directory=str(_avatars_dir)), name="avatars")
+
+
+@app.get("/api/health")
+def healthcheck():
+    return {"ok": True}
