@@ -4,13 +4,6 @@ from sqlalchemy.orm import Session
 
 from ..deps import get_db
 from .. import models
-from ..services.teacherbots_service import (
-    get_instructor,
-    get_course,
-    list_courses_for_instructor as tb_list_courses_for_instructor,
-    list_instructors as tb_list_instructors,
-    make_db_agent_and_course_fields,
-)
 
 
 router = APIRouter()
@@ -53,44 +46,36 @@ def list_enrollments(db: Session = Depends(get_db)):
 
 @router.get("/instructors")
 def list_instructors(db: Session = Depends(get_db)):
-    instructors = tb_list_instructors()
+    agents = db.query(models.Agent).order_by(models.Agent.name).all()
     results = []
-    for i in instructors:
-        avatar_url = f"/api/avatars/{quote(i.instructor_name)}.png"
-        results.append({"agent_id": i.instructor_id, "agent_name": i.instructor_name, "avatar_url": avatar_url})
+    for a in agents:
+        avatar_url = f"/api/avatars/{quote(a.name)}.png"
+        results.append({"agent_id": a.id, "agent_name": a.name, "avatar_url": avatar_url})
     return results
 
 
 @router.get("/instructors/{agent_id}/courses")
 def list_courses_for_instructor(agent_id: str, db: Session = Depends(get_db)):
-    courses = tb_list_courses_for_instructor(agent_id)
-    results = []
-    inst = get_instructor(agent_id)
-    for c in courses:
-        if inst:
-            _, _, db_course_id, _ = make_db_agent_and_course_fields(inst, c)
-            results.append({"course_id": db_course_id, "course_title": c.course_title, "agent_id": agent_id})
-        else:
-            results.append({"course_id": c.course_id, "course_title": c.course_title, "agent_id": agent_id})
-    return results
+    courses = db.query(models.Course).filter(models.Course.agent_id == agent_id).order_by(models.Course.title).all()
+    return [{"course_id": c.id, "course_title": c.title, "agent_id": agent_id} for c in courses]
 
 
 @router.get("/instructors/{agent_id}/intro")
-def instructor_intro(agent_id: str):
-    inst = get_instructor(agent_id)
-    if not inst:
+def instructor_intro(agent_id: str, db: Session = Depends(get_db)):
+    agent = db.query(models.Agent).filter(models.Agent.id == agent_id).first()
+    if not agent:
         raise HTTPException(status_code=404, detail="Instructor not found")
 
     # Try to load a custom intro from the Teacher Intros folder.
     from ..services.teacherbots_service import _find_teacherbots_root
     root = _find_teacherbots_root()
     if root:
-        intro_file = root / "Teacher Intros" / f"{inst.instructor_name}.txt"
+        intro_file = root / "Teacher Intros" / f"{agent.name}.txt"
         if intro_file.exists() and intro_file.is_file():
             return {"intro": intro_file.read_text(encoding="utf-8", errors="ignore").strip()}
 
     # Fallback placeholder for instructors without a custom intro yet.
-    return {"intro": f"Hi! I'm {inst.instructor_name}. My introduction is coming soon — stay tuned!"}
+    return {"intro": f"Hi! I'm {agent.name}. My introduction is coming soon — stay tuned!"}
 
 
 @router.post("/classroom/enter")
@@ -100,58 +85,13 @@ def enter_classroom(agent_id: str, course_id: str, db: Session = Depends(get_db)
     if not student:
         raise HTTPException(status_code=400, detail="No student exists. Seed the database first.")
 
-    db_course_id = course_id
-    if "__" not in course_id:
-        inst = get_instructor(agent_id)
-        c = get_course(agent_id, course_id)
-        if not inst or not c:
-            raise HTTPException(status_code=404, detail="Course not found for instructor")
-        _, _, db_course_id, _ = make_db_agent_and_course_fields(inst, c)
-
-    course = db.query(models.Course).filter(models.Course.id == db_course_id).first()
-    if not course:
-        inst = get_instructor(agent_id)
-        if not inst:
-            raise HTTPException(status_code=404, detail="Instructor not found")
-
-        # Ensure Agent exists
-        agent = db.query(models.Agent).filter(models.Agent.id == agent_id).first()
-        if not agent:
-            agent = models.Agent(id=agent_id, name=inst.instructor_name, system_prompt_core=inst.main_persona_text)
-            db.add(agent)
-
-        # Best-effort course title from TeacherBots
-        title = db_course_id
-        tb_course_id = course_id.split("__", 1)[1] if "__" in course_id else course_id
-        tb_course = get_course(agent_id, tb_course_id)
-        if tb_course:
-            title = tb_course.course_title
-
-        course = models.Course(
-            id=db_course_id,
-            title=title,
-            agent_id=agent_id,
-            curriculum_json={
-                "modules": [
-                    {
-                        "id": "mod_1",
-                        "title": "Course Start",
-                        "objective": "Review the course introduction and begin your first lesson.",
-                        "success_criteria": "Student confirms they are ready to start.",
-                    }
-                ]
-            },
-        )
-        db.add(course)
-        db.commit()
-        db.refresh(course)
-
-    if course.agent_id != agent_id:
+    course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    if not course or course.agent_id != agent_id:
         raise HTTPException(status_code=404, detail="Course not found for instructor")
 
     enrollment = (
         db.query(models.Enrollment)
-        .filter(models.Enrollment.student_id == student.id, models.Enrollment.course_id == db_course_id)
+        .filter(models.Enrollment.student_id == student.id, models.Enrollment.course_id == course_id)
         .first()
     )
     if not enrollment:
