@@ -25,6 +25,8 @@ export default function Welcome({ onSelectEnrollment }) {
   const [courses, setCourses] = useState([])
   const [selectedInstructorId, setSelectedInstructorId] = useState('')
   const [selectedCourseId, setSelectedCourseId] = useState('')
+  const [intro, setIntro] = useState('')
+  const [isIntroLoading, setIsIntroLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -86,6 +88,7 @@ export default function Welcome({ onSelectEnrollment }) {
       if (!selectedInstructorId) {
         setCourses([])
         setSelectedCourseId('')
+        setIntro('')
         return
       }
 
@@ -120,6 +123,34 @@ export default function Welcome({ onSelectEnrollment }) {
     }
 
     loadCourses()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedInstructorId])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadIntro() {
+      if (!selectedInstructorId) {
+        setIntro('')
+        return
+      }
+
+      setIsIntroLoading(true)
+      try {
+        const res = await api.get(`/instructors/${selectedInstructorId}/intro`)
+        if (cancelled) return
+        setIntro(res.data?.intro || '')
+      } catch {
+        if (cancelled) return
+        setIntro('')
+      } finally {
+        if (!cancelled) setIsIntroLoading(false)
+      }
+    }
+
+    loadIntro()
     return () => {
       cancelled = true
     }
@@ -179,6 +210,7 @@ export default function Welcome({ onSelectEnrollment }) {
                   const next = e.target.value
                   setSelectedInstructorId(next)
                   setSelectedCourseId('')
+                  setIntro('')
                   try {
                     localStorage.setItem(lastInstructorKey, String(next))
                   } catch {
@@ -194,6 +226,15 @@ export default function Welcome({ onSelectEnrollment }) {
                   </option>
                 ))}
               </select>
+
+              {(isIntroLoading || intro) && (
+                <div className="mt-4 rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-4">
+                  <div className="text-xs font-semibold text-emerald-200">Introduction</div>
+                  <div className="mt-2 text-xs text-emerald-100/80 whitespace-pre-wrap">
+                    {isIntroLoading ? 'Generating introduction…' : intro}
+                  </div>
+                </div>
+              )}
 
               <label className="block text-xs text-emerald-200/70 mt-4">Course</label>
               <select
