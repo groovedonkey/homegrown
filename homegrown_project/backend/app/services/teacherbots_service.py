@@ -84,7 +84,7 @@ def list_instructors() -> List[TeacherBotInstructor]:
             continue
         if p.name.startswith("."):
             continue
-        if p.name.lower() == "main personas":
+        if p.name.lower() in {"main personas", "teacher intros", "teacherbot avatars"}:
             continue
 
         main_path = _find_main_persona_file(root, p.name)
