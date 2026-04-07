@@ -2,12 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import {
   Bot,
-  BookOpen,
   Loader2,
   Paperclip,
   Send,
-  FileText,
-  Save,
   ArrowLeft,
 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -121,55 +118,6 @@ function McqQuizBlock({ enrollmentId, block, onSend }) {
   )
 }
 
-function NotesPanel({ enrollmentId }) {
-  const storageKey = `homegrown:notes:${enrollmentId}`
-  const [notes, setNotes] = useState(() => {
-    try {
-      const existing = localStorage.getItem(storageKey)
-      return existing || ''
-    } catch {
-      return ''
-    }
-  })
-
-  const save = () => {
-    try {
-      localStorage.setItem(storageKey, notes)
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-      <div className="shrink-0 px-4 py-3 border-b border-white/10 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FileText size={15} className="text-emerald-300" />
-          <div className="text-sm font-semibold text-emerald-100">Notes</div>
-        </div>
-        <button
-          onClick={save}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-950/40 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-950/60"
-        >
-          <Save size={13} />
-          Save
-        </button>
-      </div>
-      <div className="flex-1 flex flex-col min-h-0 p-3">
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Write notes here… (saved to this device)"
-          className="flex-1 w-full rounded-xl bg-zinc-950/40 border border-white/10 p-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500/40 resize-none"
-        />
-        <div className="mt-2 text-[10px] text-emerald-200/50">
-          Saved locally in your browser.
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function UploadPanel({ enrollmentId, onUploaded }) {
   const [file, setFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -199,35 +147,44 @@ function UploadPanel({ enrollmentId, onUploaded }) {
   }
 
   return (
-    <div className="pt-3 border-t border-white/10">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <Paperclip size={12} className="text-emerald-300/70 shrink-0" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-200/50">Attach File</span>
-        {isUploading && <Loader2 size={11} className="ml-auto animate-spin text-emerald-300/60" />}
-      </div>
-      <div className="flex items-center gap-1.5">
-        <label className="flex-1 min-w-0 rounded-lg border border-white/10 bg-zinc-950/40 px-2.5 py-1.5 text-[11px] text-zinc-400 cursor-pointer hover:bg-zinc-950/60 truncate">
-          <input
-            type="file"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-          />
-          <span className="truncate">{file ? file.name : 'Choose a file…'}</span>
-        </label>
-        <button
-          onClick={upload}
-          disabled={!file || isUploading}
-          className="shrink-0 rounded-lg bg-emerald-500/15 border border-emerald-500/25 hover:bg-emerald-500/20 transition-colors px-2.5 py-1.5 text-[11px] font-semibold text-emerald-200 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Send
-        </button>
-      </div>
-      {error && <div className="mt-1.5 text-[10px] text-red-300">{error}</div>}
-      {result?.ok && (
-        <div className="mt-1.5 text-[10px] text-emerald-300/80">
-          ✓ {result.filename}
-        </div>
+    <div className="flex items-center gap-2 mt-1.5">
+      <label
+        className="inline-flex items-center gap-1.5 cursor-pointer text-zinc-500 hover:text-zinc-300 transition-colors"
+        title="Attach a file"
+      >
+        <input
+          type="file"
+          className="hidden"
+          onChange={(e) => { setFile(e.target.files?.[0] || null); setResult(null); setError(null) }}
+        />
+        {isUploading ? (
+          <Loader2 size={14} className="animate-spin text-zinc-400" />
+        ) : (
+          <Paperclip size={14} />
+        )}
+      </label>
+      {file && !result?.ok && (
+        <>
+          <span className="text-[11px] text-zinc-400 truncate max-w-[140px]">{file.name}</span>
+          <button
+            onClick={upload}
+            disabled={isUploading}
+            className="text-[11px] text-emerald-300/70 hover:text-emerald-200 transition-colors disabled:opacity-40"
+          >
+            Upload
+          </button>
+          <button
+            onClick={() => setFile(null)}
+            className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            ✕
+          </button>
+        </>
       )}
+      {result?.ok && (
+        <span className="text-[11px] text-emerald-300/60">✓ {result.filename}</span>
+      )}
+      {error && <span className="text-[11px] text-red-400">{error}</span>}
     </div>
   )
 }
@@ -481,40 +438,11 @@ export default function Workspace({ enrollment, onBack }) {
                   <Send size={18} className="text-emerald-100" />
                 </button>
               </div>
+              <UploadPanel enrollmentId={enrollment.enrollment_id} />
             </div>
           </div>
         </div>
 
-        {/* ── Right Sidebar ── */}
-        <div className="hidden lg:flex w-72 xl:w-80 shrink-0 flex-col border-l border-white/10 bg-zinc-950/20 overflow-y-auto">
-
-          {/* Module info */}
-          <div className="shrink-0 p-4 border-b border-white/10">
-            <div className="flex items-center gap-2 text-emerald-200/50 mb-2">
-              <BookOpen size={13} />
-              <span className="text-[11px] uppercase tracking-widest font-bold">Current Module</span>
-            </div>
-            <div className="text-base font-bold text-zinc-100 leading-tight">{workspace.title}</div>
-            <div className="mt-0.5 text-[11px] text-emerald-200/50">
-              {typeof workspace.moduleIndex === 'number' ? `Module ${workspace.moduleIndex + 1}` : ''}
-              {typeof workspace.totalModules === 'number' ? ` / ${workspace.totalModules}` : ''}
-              {workspace.status ? ` • ${workspace.status}` : ''}
-            </div>
-            <div className="mt-3 rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3">
-              <div className="text-[10px] uppercase tracking-widest font-bold text-emerald-200/50 mb-1">Objective</div>
-              <div className="text-xs text-emerald-50 leading-relaxed">{workspace.objective}</div>
-            </div>
-          </div>
-
-          {/* Notes — fills remaining space */}
-          <div className="flex-1 flex flex-col min-h-0 p-4">
-            <NotesPanel key={enrollment.enrollment_id} enrollmentId={enrollment.enrollment_id} />
-
-            {/* Compact upload strip */}
-            <UploadPanel enrollmentId={enrollment.enrollment_id} />
-          </div>
-
-        </div>
       </div>
     </div>
   )
