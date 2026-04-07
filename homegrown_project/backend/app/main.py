@@ -137,6 +137,45 @@ def _run_startup_seed():
                 ]
             },
         )
+        tera_html_basics = upsert_course(
+            "html_basics",
+            "HTML Basics",
+            tera.id,
+            {
+                "modules": [
+                    {
+                        "id": "htmlb_1",
+                        "title": "Boot Up (Setup)",
+                        "objective": "Install VS Code, Live Server extension, create project folder and index.html.",
+                        "success_criteria": "Student has VS Code open with a my-website folder containing index.html.",
+                    },
+                    {
+                        "id": "htmlb_2",
+                        "title": "The Skeleton (HTML Boilerplate)",
+                        "objective": "Type out the HTML boilerplate and launch Live Server.",
+                        "success_criteria": "Student has a valid boilerplate and sees a blank page in the browser.",
+                    },
+                    {
+                        "id": "htmlb_3",
+                        "title": "Filling the World (Core HTML Tags)",
+                        "objective": "Learn and use headings, paragraphs, strong, em, br, hr, links, images, and lists.",
+                        "success_criteria": "Student demonstrates each tag on their page and can explain what it does.",
+                    },
+                    {
+                        "id": "htmlb_4",
+                        "title": "Style Power-Ups (Inline Styling)",
+                        "objective": "Apply inline styles using color, background-color, font-size, text-align, and font-family.",
+                        "success_criteria": "Student has at least 3 inline style properties applied to different elements.",
+                    },
+                    {
+                        "id": "htmlb_5",
+                        "title": "Final Boss: Launch Your Page",
+                        "objective": "Build a complete About Me page with a heading, bio, list, image, link, and inline styles.",
+                        "success_criteria": "Student submits a working About Me page that uses all learned concepts.",
+                    },
+                ]
+            },
+        )
         coach_course = upsert_course(
             "sports_101",
             "Sports Fundamentals",
@@ -179,6 +218,21 @@ def _run_startup_seed():
                 ]
             },
         )
+        lexi_ggb1_course = upsert_course(
+            "great_grammar_basic_1",
+            "Great Grammar Basic Module 1",
+            lexi.id,
+            {
+                "modules": [
+                    {
+                        "id": "ggb_1",
+                        "title": "The Power Move",
+                        "objective": "Master nouns, verbs, and active voice as the foundations of powerful US English writing.",
+                        "success_criteria": "Student scores 8/10 or higher on the 10-question Flex Gate quiz covering nouns, verbs, and active voice.",
+                    },
+                ]
+            },
+        )
 
         student = db.query(models.User).filter(models.User.role == "student").order_by(models.User.id.asc()).first()
         if not student:
@@ -198,7 +252,9 @@ def _run_startup_seed():
         ensure_enrollment(daisy_course)
         ensure_enrollment(barnaby_course)
         ensure_enrollment(tera_course)
+        ensure_enrollment(tera_html_basics)
         ensure_enrollment(lexi_course)
+        ensure_enrollment(lexi_ggb1_course)
         ensure_enrollment(coach_course)
 
         db.commit()

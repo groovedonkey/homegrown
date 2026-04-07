@@ -3,7 +3,7 @@ import json
 from sqlalchemy.orm import Session
 
 from .. import models
-from ..instructors import get_persona_for_agent
+from ..instructors import get_persona_for_course
 from .llm_service import generate_ai_text
 
 
@@ -270,7 +270,7 @@ def handle_chat(db: Session, enrollment_id: int, user_message: str):
         payload = _onboarding_payload_for_phase(enrollment)
         return enrollment, payload, None
 
-    persona = get_persona_for_agent(agent.id)
+    persona = get_persona_for_course(course.id, agent.id)
     persona_instructions = persona.system_instructions if persona else ""
 
     state_block = _render_state_block(enrollment)
