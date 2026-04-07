@@ -6,7 +6,6 @@ import {
   Loader2,
   Paperclip,
   Send,
-  Upload,
   FileText,
   Save,
   ArrowLeft,
@@ -142,29 +141,29 @@ function NotesPanel({ enrollmentId }) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-      <div className="p-4 border-b border-white/10 flex items-center justify-between">
+    <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+      <div className="shrink-0 px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText size={16} className="text-emerald-300" />
+          <FileText size={15} className="text-emerald-300" />
           <div className="text-sm font-semibold text-emerald-100">Notes</div>
         </div>
         <button
           onClick={save}
-          className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-zinc-950/40 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-950/60"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-950/40 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-950/60"
         >
-          <Save size={14} />
+          <Save size={13} />
           Save
         </button>
       </div>
-      <div className="p-4">
+      <div className="flex-1 flex flex-col min-h-0 p-3">
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Write notes here… (saved to this device)"
-          className="w-full min-h-45 rounded-xl bg-zinc-950/40 border border-white/10 p-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500/40"
+          className="flex-1 w-full rounded-xl bg-zinc-950/40 border border-white/10 p-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500/40 resize-none"
         />
-        <div className="mt-2 text-[11px] text-emerald-200/60">
-          Notes are saved locally in your browser (localStorage).
+        <div className="mt-2 text-[10px] text-emerald-200/50">
+          Saved locally in your browser.
         </div>
       </div>
     </div>
@@ -193,56 +192,42 @@ function UploadPanel({ enrollmentId, onUploaded }) {
       onUploaded?.(res.data)
       setFile(null)
     } catch {
-      setError('Upload failed. Check backend logs.')
+      setError('Upload failed.')
     } finally {
       setIsUploading(false)
     }
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-      <div className="p-4 border-b border-white/10 flex items-center gap-2">
-        <Upload size={16} className="text-emerald-300" />
-        <div className="text-sm font-semibold text-emerald-100">Upload Files</div>
-        {isUploading && <Loader2 size={16} className="ml-auto animate-spin text-emerald-300" />}
+    <div className="pt-3 border-t border-white/10">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Paperclip size={12} className="text-emerald-300/70 shrink-0" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-200/50">Attach File</span>
+        {isUploading && <Loader2 size={11} className="ml-auto animate-spin text-emerald-300/60" />}
       </div>
-
-      <div className="p-4">
-        <div className="flex items-center gap-2">
-          <label className="flex-1 rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-xs text-zinc-200 cursor-pointer hover:bg-zinc-950/60">
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-            {file ? file.name : 'Choose a file…'}
-          </label>
-          <button
-            onClick={upload}
-            disabled={!file || isUploading}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors px-4 py-2 text-xs font-semibold text-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Paperclip size={14} />
-            Upload
-          </button>
-        </div>
-
-        {error && (
-          <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
-            {error}
-          </div>
-        )}
-
-        {result?.ok && (
-          <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-100">
-            Uploaded <span className="font-semibold">{result.filename}</span>
-          </div>
-        )}
-
-        <div className="mt-2 text-[11px] text-emerald-200/60">
-          Uploaded files are stored on the server (local dev) and logged to chat history.
-        </div>
+      <div className="flex items-center gap-1.5">
+        <label className="flex-1 min-w-0 rounded-lg border border-white/10 bg-zinc-950/40 px-2.5 py-1.5 text-[11px] text-zinc-400 cursor-pointer hover:bg-zinc-950/60 truncate">
+          <input
+            type="file"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+          />
+          <span className="truncate">{file ? file.name : 'Choose a file…'}</span>
+        </label>
+        <button
+          onClick={upload}
+          disabled={!file || isUploading}
+          className="shrink-0 rounded-lg bg-emerald-500/15 border border-emerald-500/25 hover:bg-emerald-500/20 transition-colors px-2.5 py-1.5 text-[11px] font-semibold text-emerald-200 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Send
+        </button>
       </div>
+      {error && <div className="mt-1.5 text-[10px] text-red-300">{error}</div>}
+      {result?.ok && (
+        <div className="mt-1.5 text-[10px] text-emerald-300/80">
+          ✓ {result.filename}
+        </div>
+      )}
     </div>
   )
 }
@@ -395,24 +380,23 @@ export default function Workspace({ enrollment, onBack }) {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-zinc-950 via-zinc-950 to-emerald-950 text-zinc-100 overflow-y-auto">
+    <div className="h-screen flex flex-col bg-linear-to-br from-zinc-950 via-zinc-950 to-emerald-950 text-zinc-100 overflow-hidden">
+
       {/* ── Header ── */}
-      <div className="sticky top-0 z-10 p-4 border-b border-white/10 bg-zinc-950/80 backdrop-blur flex items-center gap-3">
+      <div className="shrink-0 z-10 px-4 py-3 border-b border-white/10 bg-zinc-950/80 backdrop-blur flex items-center gap-3">
         <button
           onClick={onBack}
-          className="h-10 w-10 rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/60 flex items-center justify-center"
+          className="h-9 w-9 rounded-xl border border-white/10 bg-zinc-950/40 hover:bg-zinc-950/60 flex items-center justify-center"
           title="Back"
         >
-          <ArrowLeft size={18} className="text-emerald-200" />
+          <ArrowLeft size={17} className="text-emerald-200" />
         </button>
-        <div className="h-10 w-10 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
-          <Bot size={20} className="text-emerald-300" />
+        <div className="h-9 w-9 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
+          <Bot size={18} className="text-emerald-300" />
         </div>
         <div className="min-w-0">
           <div className="text-sm font-bold text-emerald-100 truncate">{courseLabel}</div>
-          <div className="text-xs text-emerald-200/60 truncate">
-            Enrollment #{enrollment.enrollment_id}
-          </div>
+          <div className="text-xs text-emerald-200/60 truncate">Enrollment #{enrollment.enrollment_id}</div>
         </div>
         <button
           onClick={resetSession}
@@ -424,118 +408,112 @@ export default function Workspace({ enrollment, onBack }) {
         </button>
       </div>
 
-      {/* ── Chat ── */}
-      <div className="border-b border-white/10 bg-zinc-950/20">
-        <div ref={scrollRef} className="h-[70vh] overflow-y-auto px-4 py-5 space-y-4">
-          {messages.map((m, idx) => (
-            <div
-              key={idx}
-              className={cx('flex', m.sender === 'student' ? 'justify-end' : 'justify-start')}
-            >
-              <div
-                className={cx(
-                  'max-w-[85%] rounded-2xl border px-4 py-3 text-sm leading-relaxed',
-                  m.sender === 'student'
-                    ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-50 rounded-br-none'
-                    : m.sender === 'system'
-                      ? 'bg-red-500/10 border-red-500/20 text-red-200'
-                      : 'bg-white/5 border-white/10 text-zinc-100 rounded-bl-none',
-                )}
-              >
-                {(m.blocks || []).map((b, bi) => {
-                  if (b.type === 'mcq_quiz') {
-                    return (
-                      <div key={bi} className="mt-2">
-                        <McqQuizBlock enrollmentId={enrollment.enrollment_id} block={b} onSend={sendChat} />
-                      </div>
-                    )
-                  }
-                  return (
-                    <div key={bi} className={bi === 0 ? '' : 'mt-2'}>
-                      <ReactMarkdown>{b.text || ''}</ReactMarkdown>
-                    </div>
-                  )
-                })}
+      {/* ── Body: chat column + right sidebar ── */}
+      <div className="flex flex-1 min-h-0">
+
+        {/* ── Center: Chat ── */}
+        <div className="flex flex-col flex-1 min-w-0">
+          {/* Messages */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto">
+            <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+              {messages.map((m, idx) => (
+                <div
+                  key={idx}
+                  className={cx('flex', m.sender === 'student' ? 'justify-end' : 'justify-start')}
+                >
+                  <div
+                    className={cx(
+                      'max-w-[85%] rounded-2xl border px-4 py-3 text-sm leading-relaxed',
+                      m.sender === 'student'
+                        ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-50 rounded-br-none'
+                        : m.sender === 'system'
+                          ? 'bg-red-500/10 border-red-500/20 text-red-200'
+                          : 'bg-white/5 border-white/10 text-zinc-100 rounded-bl-none',
+                    )}
+                  >
+                    {(m.blocks || []).map((b, bi) => {
+                      if (b.type === 'mcq_quiz') {
+                        return (
+                          <div key={bi} className="mt-2">
+                            <McqQuizBlock enrollmentId={enrollment.enrollment_id} block={b} onSend={sendChat} />
+                          </div>
+                        )
+                      }
+                      return (
+                        <div key={bi} className={bi === 0 ? '' : 'mt-2'}>
+                          <ReactMarkdown>{b.text || ''}</ReactMarkdown>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-4 py-2 text-xs text-emerald-200/70">
+                    <Loader2 size={14} className="animate-spin" />
+                    Thinking…
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Input bar */}
+          <div className="shrink-0 border-t border-white/10 bg-zinc-950/30">
+            <div className="max-w-2xl mx-auto px-4 py-3">
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-zinc-950/40 px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500/40">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                  placeholder="Type a message…"
+                  className="flex-1 bg-transparent outline-none text-sm text-zinc-100 placeholder:text-zinc-500"
+                  disabled={isLoading}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || isLoading}
+                  className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/25 disabled:opacity-50"
+                  title="Send"
+                >
+                  <Send size={18} className="text-emerald-100" />
+                </button>
               </div>
             </div>
-          ))}
-
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-4 py-2 text-xs text-emerald-200/70">
-                <Loader2 size={14} className="animate-spin" />
-                Thinking…
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-zinc-950/40 px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500/40">
-            <button className="p-2 text-emerald-200/60 hover:text-emerald-200" title="Attach">
-              <Paperclip size={18} />
-            </button>
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Type a message…"
-              className="flex-1 bg-transparent outline-none text-sm text-zinc-100 placeholder:text-zinc-500"
-              disabled={isLoading}
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!input.trim() || isLoading}
-              className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/25 disabled:opacity-50"
-              title="Send"
-            >
-              <Send size={18} className="text-emerald-100" />
-            </button>
           </div>
         </div>
-      </div>
 
-      {/* ── Below-chat sections ── */}
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 space-y-6">
-        {/* Module info */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-          <div className="p-6 border-b border-white/10">
-            <div className="flex items-center gap-2 text-emerald-200/70">
-              <BookOpen size={16} />
-              <span className="text-xs uppercase tracking-widest font-bold">Current Module</span>
+        {/* ── Right Sidebar ── */}
+        <div className="hidden lg:flex w-72 xl:w-80 shrink-0 flex-col border-l border-white/10 bg-zinc-950/20 overflow-y-auto">
+
+          {/* Module info */}
+          <div className="shrink-0 p-4 border-b border-white/10">
+            <div className="flex items-center gap-2 text-emerald-200/50 mb-2">
+              <BookOpen size={13} />
+              <span className="text-[11px] uppercase tracking-widest font-bold">Current Module</span>
             </div>
-            <div className="mt-2 text-2xl font-bold text-zinc-100 truncate">{workspace.title}</div>
-            <div className="mt-1 text-xs text-emerald-200/60">
+            <div className="text-base font-bold text-zinc-100 leading-tight">{workspace.title}</div>
+            <div className="mt-0.5 text-[11px] text-emerald-200/50">
               {typeof workspace.moduleIndex === 'number' ? `Module ${workspace.moduleIndex + 1}` : ''}
               {typeof workspace.totalModules === 'number' ? ` / ${workspace.totalModules}` : ''}
               {workspace.status ? ` • ${workspace.status}` : ''}
             </div>
-          </div>
-
-          <div className="p-6">
-            <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-4">
-              <div className="text-xs uppercase tracking-widest font-bold text-emerald-200/70">Objective</div>
-              <div className="mt-2 text-sm text-emerald-50">{workspace.objective}</div>
+            <div className="mt-3 rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-emerald-200/50 mb-1">Objective</div>
+              <div className="text-xs text-emerald-50 leading-relaxed">{workspace.objective}</div>
             </div>
           </div>
-        </div>
 
-        {/* Upload & Notes */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <UploadPanel enrollmentId={enrollment.enrollment_id} />
-          <NotesPanel key={enrollment.enrollment_id} enrollmentId={enrollment.enrollment_id} />
-        </div>
+          {/* Notes — fills remaining space */}
+          <div className="flex-1 flex flex-col min-h-0 p-4">
+            <NotesPanel key={enrollment.enrollment_id} enrollmentId={enrollment.enrollment_id} />
 
-        {/* Workspace placeholder */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-zinc-200/90">
-          <div className="font-semibold text-emerald-100">Workspace</div>
-          <div className="mt-2 text-xs text-emerald-200/60">
-            This area is where interactive content (editors, worksheets, grading results) will live.
+            {/* Compact upload strip */}
+            <UploadPanel enrollmentId={enrollment.enrollment_id} />
           </div>
-        </div>
 
-        <div className="text-[11px] text-emerald-200/50 pb-4">
-          Dark mode prototype • Styling and layout can be expanded later.
         </div>
       </div>
     </div>
